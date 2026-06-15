@@ -1,0 +1,14 @@
+.venv
+__pycache__
+app/**/__pycache__
+*.pyc
+*.log
+.env
+.env.*
+data
+storage
+training_logs
+models/*.h5
+models/*.keras
+notebooks
+
