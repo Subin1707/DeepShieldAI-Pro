@@ -1,0 +1,6 @@
+# Optional heavy dependencies for training or running real model artifacts.
+# Install only in an ML environment, not required for the default API demo.
+tensorflow
+scikit-learn
+matplotlib
+onnxruntime

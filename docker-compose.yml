@@ -1,0 +1,45 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: deepshield-backend
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: sqlite:///data/deepshield.db
+      UPLOAD_DIR: storage/uploads
+      FRAME_DIR: storage/frames
+      FACE_DIR: storage/faces
+      HEATMAP_DIR: storage/heatmaps
+      REPORT_DIR: storage/reports
+      CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - deepshield_data:/app/data
+      - deepshield_storage:/app/storage
+      - ./backend/models:/app/models
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: deepshield-frontend
+    environment:
+      VITE_API_URL: http://127.0.0.1:8000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    command: npm run dev -- --host 0.0.0.0 --port 5173
+    depends_on:
+      - backend
+
+volumes:
+  deepshield_data:
+  deepshield_storage:
+  frontend_node_modules:
