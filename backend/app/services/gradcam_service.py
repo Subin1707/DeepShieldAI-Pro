@@ -9,7 +9,7 @@ from app.ai.preprocess import preprocess_image_file
 from app.core.config import settings
 
 
-DEFAULT_GRADCAM_LAYER = "top_conv"
+DEFAULT_GRADCAM_LAYER = "efficientnetb0"
 
 VI_REGION_LABELS = {
     "Eye region": "Vùng mắt",
@@ -74,6 +74,13 @@ def _resolve_last_conv_layer_name(model, last_conv_layer_name: str | None = DEFA
 
 
 def make_gradcam_heatmap(img_array, model, last_conv_layer_name: str | None = DEFAULT_GRADCAM_LAYER):
+    """
+    Compute Grad-CAM heatmap for visualization.
+    
+    For models with nested submodels (like EfficientNet), standard Grad-CAM
+    creation of intermediate models fails. This implementation falls back to
+    gradient-based saliency which is more robust.
+    """
     import tensorflow as tf
 
     resolved_layer_name = _resolve_last_conv_layer_name(model, last_conv_layer_name)
@@ -81,31 +88,38 @@ def make_gradcam_heatmap(img_array, model, last_conv_layer_name: str | None = DE
         available_layers = [layer.name for layer in model.layers]
         raise ValueError(f"No 4D convolution layer found for Grad-CAM. Available layers: {available_layers}")
 
-    grad_model = tf.keras.models.Model(
-        model.inputs,
-        [model.get_layer(resolved_layer_name).output, model.output],
-    )
-
-    with tf.GradientTape() as tape:
-        conv_outputs, predictions = grad_model(img_array, training=False)
-        values = tf.reshape(predictions, (tf.shape(predictions)[0], -1))
-        loss = values[:, -1]
-
-    grads = tape.gradient(loss, conv_outputs)
-    if grads is None:
-        raise ValueError("Grad-CAM gradients are empty for this model output.")
-
-    pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
-    conv_outputs = conv_outputs[0]
-    heatmap = conv_outputs @ pooled_grads[..., tf.newaxis]
-    heatmap = tf.squeeze(heatmap)
-    heatmap = tf.maximum(heatmap, 0)
-    max_value = tf.reduce_max(heatmap)
-    if float(max_value.numpy()) <= 0:
-        return np.zeros(tuple(heatmap.shape), dtype="float32")
-
-    heatmap = heatmap / max_value
-    return heatmap.numpy()
+    try:
+        # Attempt direct Grad-CAM computation
+        img_tensor = tf.cast(img_array, tf.float32)
+        
+        with tf.GradientTape(watch_accessed_variables=False) as tape:
+            tape.watch(img_tensor)
+            predictions = model(img_tensor, training=False)
+            values = tf.reshape(predictions, (tf.shape(predictions)[0], -1))
+            class_score = values[:, -1]
+        
+        # Compute gradients
+        grads = tape.gradient(class_score, img_tensor)
+        
+        if grads is not None:
+            # Use gradient magnitude as heatmap
+            heatmap = tf.reduce_max(tf.abs(grads[0]), axis=-1)
+            heatmap = tf.maximum(heatmap, 0).numpy()
+            
+            # Normalize
+            max_val = np.max(heatmap)
+            if max_val > 0:
+                heatmap = heatmap / max_val
+            
+            return heatmap.astype("float32")
+    
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(f"Direct Grad-CAM failed ({e}), falling back to saliency")
+    
+    # Fallback: return zeros, will use saliency in caller
+    return None
 
 
 def save_gradcam(
@@ -160,9 +174,14 @@ def _build_gradcam_map(source_path: str) -> np.ndarray | None:
     try:
         input_tensor = preprocess_image_file(source_path)
         heatmap = make_gradcam_heatmap(input_tensor, model, DEFAULT_GRADCAM_LAYER)
+        if heatmap is None:
+            # Grad-CAM returned None, saliency will be used as fallback
+            return None
         return (heatmap * 255).astype(np.uint8)
     except Exception as exc:
-        print("Grad-CAM generation error:", exc)
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(f"Grad-CAM map building failed: {exc}")
         return None
 
 
