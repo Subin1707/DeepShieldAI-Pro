@@ -81,8 +81,9 @@ async def analyze_uploaded_file(file: UploadFile) -> dict:
         if suspicious and suspicious[0].get("facePath")
         else frame_paths[0] if frame_paths else file_path
     )
+    heatmap_face_metadata = suspicious[0].get("face") if suspicious else None
     stage_started = perf_counter()
-    heatmap = generate_saliency_heatmap(heatmap_source, analysis_id)
+    heatmap = generate_saliency_heatmap(heatmap_source, analysis_id, heatmap_face_metadata)
     timings["explainabilityMs"] = round((perf_counter() - stage_started) * 1000, 2)
     result["heatmapUrl"] = build_heatmap_url(analysis_id)
     result["suspiciousRegions"] = heatmap["regions"]

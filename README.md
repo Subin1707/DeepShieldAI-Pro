@@ -1,4 +1,4 @@
-# DeepShieldAI-Pro
+﻿# DeepShieldAI-Pro
 
 DeepShieldAI-Pro là đề tài xây dựng nền tảng web hỗ trợ phát hiện ảnh và video deepfake. Hệ thống cho phép người dùng tải lên media, trích xuất metadata, phát hiện khuôn mặt, chạy mô hình học sâu, kết hợp các kỹ thuật phân tích pháp chứng số, trực quan hóa vùng nghi vấn bằng heatmap, sinh báo cáo giải thích bằng AI và lưu lại lịch sử phân tích.
 
@@ -314,17 +314,23 @@ Các component nổi bật:
 | `POST` | `/api/chatbot/explain` | Chatbot giải thích kết quả |
 | `GET` | `/api/chatbot/suggestions` | Gợi ý câu hỏi |
 
-Ví dụ upload:
+Ví dụ upload (Port 5000):
 
 ```bash
-curl -X POST "http://127.0.0.1:8000/api/analysis" \
+curl -X POST "http://127.0.0.1:5000/api/analysis" \
   -F "file=@sample.mp4"
+```
+
+Trên Windows PowerShell:
+
+```powershell
+curl -X POST "http://127.0.0.1:5000/api/analysis" -F "file=@sample.mp4"
 ```
 
 Trên Windows CMD:
 
 ```bat
-curl -X POST "http://127.0.0.1:8000/api/analysis" ^
+curl -X POST "http://127.0.0.1:5000/api/analysis" ^
   -F "file=@sample.mp4"
 ```
 
@@ -364,13 +370,19 @@ python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 copy .env.example .env
-uvicorn main:app --reload
+uvicorn main:app --reload --host 127.0.0.1 --port 5000
+```
+
+Backend sẽ chạy tại:
+
+```text
+http://127.0.0.1:5000
 ```
 
 Swagger/OpenAPI:
 
 ```text
-http://127.0.0.1:8000/docs
+http://127.0.0.1:5000/docs
 ```
 
 ### 10.3 Chạy frontend thủ công
@@ -381,10 +393,16 @@ npm install
 npm run dev
 ```
 
-Nếu cần đổi API URL, tạo `frontend/.env`:
+Tạo file `frontend/.env` để cấu hình API URL:
 
 ```env
-VITE_API_URL=http://127.0.0.1:8000
+VITE_API_URL=http://127.0.0.1:5000
+```
+
+Frontend sẽ chạy tại:
+
+```text
+http://127.0.0.1:5173 (hoặc port khác nếu 5173 bị chiếm)
 ```
 
 ## 11. Biến môi trường backend

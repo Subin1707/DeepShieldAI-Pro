@@ -71,7 +71,7 @@ function HeatmapViewer({ imageUrl, focusAreas = [], suspiciousRegions = [] }) {
         <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
           <span className="inline-flex items-center gap-2">
             <Crosshair size={14} className="text-cyan-300" />
-            Số trên ảnh tương ứng với danh sách giải thích bên dưới.
+            Vùng nóng đỏ/vàng là Grad-CAM; số trên ảnh đánh dấu mắt, mũi, miệng hoặc hotspot cần soi.
           </span>
           <span className="inline-flex items-center gap-2">
             <ZoomIn size={14} className="text-cyan-300" />

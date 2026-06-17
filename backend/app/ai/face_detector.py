@@ -52,13 +52,26 @@ def crop_face_or_frame(frame: np.ndarray, padding_ratio: float = 0.22) -> tuple[
     if crop.size == 0:
         return frame, {"faceDetected": False, "bbox": None}
 
+    crop_width = right - left
+    crop_height = bottom - top
+
     return crop, {
         "faceDetected": True,
         "bbox": {
             "x": left,
             "y": top,
-            "width": right - left,
-            "height": bottom - top,
+            "width": crop_width,
+            "height": crop_height,
+        },
+        "faceBbox": {
+            "x": x - left,
+            "y": y - top,
+            "width": width,
+            "height": height,
+        },
+        "cropSize": {
+            "width": crop_width,
+            "height": crop_height,
         },
     }
 
