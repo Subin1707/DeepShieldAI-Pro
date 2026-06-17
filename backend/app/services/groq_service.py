@@ -62,8 +62,15 @@ def groq_error_message(error_text: str) -> str:
         )
     if "groq http 403" in lowered:
         return "Groq trả lỗi 403. Có thể key chưa được phép dùng model hiện tại."
-    if "groq http 404" in lowered or "model" in lowered:
-        return "Groq không tìm thấy model trong `GROQ_MODEL`. Hãy thử `llama-3.1-8b-instant`."
+    if "groq http 404" in lowered or "model_not_found" in lowered:
+        return (
+            f"Groq không tìm thấy model `{settings.GROQ_MODEL}` cho API key hiện tại. "
+            "Bạn mở Groq Console để kiểm tra model được phép dùng, hoặc gọi `/models` để lấy danh sách model."
+        )
+    if "rate_limit" in lowered or "groq http 429" in lowered:
+        return "Groq đang bị giới hạn tần suất. Bạn chờ một chút rồi hỏi lại nhé."
+    if "too many tokens" in lowered or "context" in lowered:
+        return "Nội dung gửi sang Groq quá dài. Backend đã bỏ qua báo cáo AI cũ trong prompt, bạn thử hỏi lại."
     if "connecterror" in lowered or "timed out" in lowered:
         return "Backend chưa gọi được Groq. Bạn kiểm tra mạng Internet hoặc thử lại sau."
     return "Groq đang lỗi hoặc cấu hình chưa đúng. Bạn kiểm tra `GROQ_API_KEY`, `GROQ_MODEL` và mạng backend nhé."

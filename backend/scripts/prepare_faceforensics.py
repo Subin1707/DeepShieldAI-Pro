@@ -30,6 +30,14 @@ def parse_args():
     parser.add_argument("--image-size", type=int, default=224)
     parser.add_argument("--max-real-videos", type=int, default=0, help="0 means all real videos.")
     parser.add_argument("--max-fake-videos-per-method", type=int, default=0, help="0 means all fake videos.")
+    parser.add_argument("--max-real-images", type=int, default=0, help="0 means no image limit.")
+    parser.add_argument("--max-fake-images", type=int, default=0, help="0 means no image limit.")
+    parser.add_argument(
+        "--crop-mode",
+        choices=("face", "frame"),
+        default="face",
+        help="face crops the detected face; frame resizes the full frame and is much faster.",
+    )
     parser.add_argument("--methods", nargs="*", default=FAKE_METHODS, help="Fake method folders to include.")
     parser.add_argument(
         "--sampling-mode",
@@ -49,8 +57,10 @@ def sample_indices(total_frames: int, count: int) -> list[int]:
     return [round(i * (total_frames - 1) / (count - 1)) for i in range(count)]
 
 
-def save_frame(frame, output_path: Path, image_size: int) -> bool:
-    crop, _ = crop_face_or_frame(frame)
+def save_frame(frame, output_path: Path, image_size: int, crop_mode: str) -> bool:
+    crop = frame
+    if crop_mode == "face":
+        crop, _ = crop_face_or_frame(frame)
     resized = cv2.resize(crop, (image_size, image_size))
     return cv2.imwrite(str(output_path), resized)
 
@@ -62,6 +72,7 @@ def extract_video_frames_seek(
     prefix: str,
     frame_indices: list[int],
     image_size: int,
+    crop_mode: str,
 ) -> int:
     saved = 0
     for frame_index in frame_indices:
@@ -81,7 +92,7 @@ def extract_video_frames_seek(
             continue
 
         try:
-            if save_frame(frame, output_path, image_size):
+            if save_frame(frame, output_path, image_size, crop_mode):
                 saved += 1
         except cv2.error as exc:
             print(f"Skip frame {frame_index} in {video_path}: {exc}")
@@ -98,6 +109,7 @@ def extract_video_frames_scan(
     prefix: str,
     frame_indices: list[int],
     image_size: int,
+    crop_mode: str,
 ) -> int:
     pending = {}
     for frame_index in frame_indices:
@@ -125,7 +137,7 @@ def extract_video_frames_scan(
         output_path = pending.get(current_index)
         if output_path is not None:
             try:
-                if save_frame(frame, output_path, image_size):
+                if save_frame(frame, output_path, image_size, crop_mode):
                     saved += 1
             except cv2.error as exc:
                 print(f"Skip frame {current_index} in {video_path}: {exc}")
@@ -149,6 +161,7 @@ def extract_video_frames(
     frames_per_video: int,
     image_size: int,
     sampling_mode: str,
+    crop_mode: str,
 ) -> int:
     cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
@@ -163,8 +176,8 @@ def extract_video_frames(
             return 0
 
         if sampling_mode == "seek":
-            return extract_video_frames_seek(cap, video_path, output_dir, prefix, frame_indices, image_size)
-        return extract_video_frames_scan(cap, video_path, output_dir, prefix, frame_indices, image_size)
+            return extract_video_frames_seek(cap, video_path, output_dir, prefix, frame_indices, image_size, crop_mode)
+        return extract_video_frames_scan(cap, video_path, output_dir, prefix, frame_indices, image_size, crop_mode)
     finally:
         cap.release()
         gc.collect()
@@ -177,13 +190,27 @@ def prepare_split(
     frames_per_video: int,
     image_size: int,
     sampling_mode: str,
+    max_images: int,
+    crop_mode: str,
 ) -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
     total_saved = 0
 
     for index, video_path in enumerate(videos, start=1):
+        if max_images > 0 and total_saved >= max_images:
+            break
+
         prefix = f"{label}_{video_path.parent.name}_{video_path.stem}"
-        total_saved += extract_video_frames(video_path, output_dir, prefix, frames_per_video, image_size, sampling_mode)
+        saved = extract_video_frames(video_path, output_dir, prefix, frames_per_video, image_size, sampling_mode, crop_mode)
+        total_saved += saved
+
+        if max_images > 0 and total_saved > max_images:
+            overflow = total_saved - max_images
+            created_files = sorted(output_dir.glob(f"{prefix}_*.jpg"), key=lambda path: path.stat().st_mtime, reverse=True)
+            for extra_path in created_files[:overflow]:
+                extra_path.unlink(missing_ok=True)
+            total_saved = max_images
+
         if index == 1 or index % 10 == 0:
             print(f"{label}: processed {index}/{len(videos)} videos, saved {total_saved} images")
 
@@ -195,22 +222,52 @@ def list_videos(folder: Path, limit: int = 0) -> list[Path]:
     return videos[:limit] if limit > 0 else videos
 
 
+def first_existing_path(paths: list[Path]) -> Path | None:
+    for path in paths:
+        if path.exists():
+            return path
+    return None
+
+
+def resolve_real_dir(source: Path) -> Path:
+    real_dir = first_existing_path(
+        [
+            source / "original",
+            source / "original_sequences" / "youtube" / "c23" / "videos",
+        ]
+    )
+    if real_dir is None:
+        raise FileNotFoundError(
+            "Missing real videos folder. Expected either "
+            f"{source / 'original'} or "
+            f"{source / 'original_sequences' / 'youtube' / 'c23' / 'videos'}"
+        )
+    return real_dir
+
+
+def resolve_fake_method_dir(source: Path, method: str) -> Path | None:
+    return first_existing_path(
+        [
+            source / method,
+            source / "manipulated_sequences" / method / "c23" / "videos",
+        ]
+    )
+
+
 def main():
     args = parse_args()
     source = Path(args.source)
     output = Path(args.output)
 
-    real_dir = source / "original"
-    if not real_dir.exists():
-        raise FileNotFoundError(f"Missing original folder: {real_dir}")
-
+    real_dir = resolve_real_dir(source)
     real_videos = list_videos(real_dir, args.max_real_videos)
 
     fake_videos = []
     for method in args.methods:
-        method_dir = source / method
-        if not method_dir.exists():
-            print(f"Skip missing method folder: {method_dir}")
+        method_dir = resolve_fake_method_dir(source, method)
+        if method_dir is None:
+            print(f"Skip missing method folder: {source / method}")
+            print(f"Skip missing official method folder: {source / 'manipulated_sequences' / method / 'c23' / 'videos'}")
             continue
         fake_videos.extend(list_videos(method_dir, args.max_fake_videos_per_method))
 
@@ -225,6 +282,8 @@ def main():
         frames_per_video=args.frames_per_video,
         image_size=args.image_size,
         sampling_mode=args.sampling_mode,
+        max_images=args.max_real_images,
+        crop_mode=args.crop_mode,
     )
     fake_saved = prepare_split(
         fake_videos,
@@ -233,6 +292,8 @@ def main():
         frames_per_video=args.frames_per_video,
         image_size=args.image_size,
         sampling_mode=args.sampling_mode,
+        max_images=args.max_fake_images,
+        crop_mode=args.crop_mode,
     )
 
     print(f"Done. Saved {real_saved} real images and {fake_saved} fake images.")

@@ -187,7 +187,6 @@ def _compact_analysis_context(analysis: dict) -> str:
         "fusion": analysis.get("fusion"),
         "suspiciousSegments": analysis.get("suspiciousSegments"),
         "suspiciousRegions": analysis.get("suspiciousRegions"),
-        "aiReport": analysis.get("aiReport"),
     }
     lines = [f"- {key}: {value}" for key, value in fields.items() if value not in (None, "", [], {})]
     return "\n".join(lines) if lines else "Ngữ cảnh phân tích trống."
