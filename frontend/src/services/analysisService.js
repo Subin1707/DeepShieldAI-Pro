@@ -9,9 +9,6 @@ export async function analyzeFile(file, onUploadProgress) {
   formData.append("file", file);
 
   const response = await api.post("/analysis", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
     timeout: 300000,
     onUploadProgress,
   });

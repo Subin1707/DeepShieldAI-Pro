@@ -11,13 +11,16 @@ def get_app_settings():
 
 
 def validate_upload_dependency(file: UploadFile):
-    if not file or not file.filename:
-        raise HTTPException(status_code=400, detail="No file uploaded.")
+    if not file:
+        raise HTTPException(status_code=400, detail="No file uploaded. Please select an image or video file.")
+    
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="File has no name. Please upload a valid file.")
 
     try:
         validate_file(file.filename)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail=f"File validation failed: {str(exc)}") from exc
 
     return file
 

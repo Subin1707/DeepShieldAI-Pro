@@ -1,3 +1,10 @@
+import os
+
+# Suppress TensorFlow warnings
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
+os.environ.setdefault("TF_FORCE_GPU_ALLOW_GROWTH", "false")
+os.environ.setdefault("TF_ENABLE_ONEDNN_OPTS", "0")
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
