@@ -133,7 +133,7 @@ EfficientNet-B0 được dùng làm backbone trích xuất đặc trưng ảnh/k
 models/efficientnet_deepfake_thisperson.keras
 ```
 
-Ảnh đầu vào được resize theo `IMAGE_MODEL_SIZE`, mặc định là `160`, chuẩn hóa pixel và đưa vào model để tạo xác suất deepfake.
+Ảnh đầu vào được resize theo `IMAGE_MODEL_SIZE`, mặc định là `224`, chuẩn hóa pixel và đưa vào model để tạo xác suất deepfake.
 
 ### 6.3 Transfer Learning
 
@@ -417,7 +417,7 @@ ENVIRONMENT=development
 API_PREFIX=/api
 
 MODEL_PATH=models/efficientnet_deepfake_thisperson.keras
-IMAGE_MODEL_SIZE=160
+IMAGE_MODEL_SIZE=224
 FAKE_THRESHOLD=0.58
 REVIEW_MARGIN=0.08
 SUSPICIOUS_FRAME_THRESHOLD=0.55

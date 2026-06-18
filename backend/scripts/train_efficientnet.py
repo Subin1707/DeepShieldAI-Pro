@@ -123,8 +123,8 @@ def main():
     args = parse_args()
 
     import tensorflow as tf
-    from tensorflow import keras
-    from tensorflow.keras import layers
+    import keras
+    from keras import layers
 
     data_dir = Path(args.data_dir)
     output_path = Path(args.output)

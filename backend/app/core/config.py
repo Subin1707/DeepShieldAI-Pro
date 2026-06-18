@@ -22,7 +22,7 @@ class Settings:
         "MODEL_PATH",
         "models/efficientnet_deepfake_thisperson.keras"
     )
-    IMAGE_MODEL_SIZE: int = int(os.getenv("IMAGE_MODEL_SIZE", "160"))
+    IMAGE_MODEL_SIZE: int = int(os.getenv("IMAGE_MODEL_SIZE", "224"))
     FAKE_THRESHOLD: float = float(os.getenv("FAKE_THRESHOLD", "0.58"))
     REVIEW_MARGIN: float = float(os.getenv("REVIEW_MARGIN", "0.08"))
     SUSPICIOUS_FRAME_THRESHOLD: float = float(os.getenv("SUSPICIOUS_FRAME_THRESHOLD", "0.55"))

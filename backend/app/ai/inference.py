@@ -47,7 +47,7 @@ def run_image_inference(file_path: str) -> dict | None:
     if model is None:
         return None
 
-    input_tensor = preprocess_image_file(file_path)
+    input_tensor = preprocess_image_file(file_path, image_size=model.image_size)
     raw_prediction = model.predict(input_tensor)
     fake_probability = _extract_fake_probability(raw_prediction)
     result = build_inference_result(fake_probability)
@@ -60,7 +60,7 @@ def run_batch_inference(file_paths: list[str]) -> list[dict] | None:
     if model is None:
         return None
 
-    input_tensor = preprocess_image_files(file_paths)
+    input_tensor = preprocess_image_files(file_paths, image_size=model.image_size)
     raw_predictions = model.predict(input_tensor)
     predictions = np.asarray(raw_predictions).reshape((len(file_paths), -1))
 

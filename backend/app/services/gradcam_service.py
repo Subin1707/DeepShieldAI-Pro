@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 
 from app.ai.face_detector import detect_largest_face
-from app.ai.model_loader import load_deepfake_model
+from app.ai.model_loader import infer_model_image_size, load_deepfake_model
 from app.ai.preprocess import preprocess_image_file
 from app.core.config import settings
 
@@ -207,7 +207,8 @@ def save_gradcam(
         raise ValueError(f"Could not read image for Grad-CAM: {image_path}")
 
     original = img.copy()
-    img = cv2.resize(img, (settings.IMAGE_MODEL_SIZE, settings.IMAGE_MODEL_SIZE))
+    image_size = infer_model_image_size(model, backend="keras")
+    img = cv2.resize(img, (image_size, image_size))
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img_array = np.expand_dims(img / 255.0, axis=0).astype("float32")
 
@@ -246,7 +247,7 @@ def _build_gradcam_map(source_path: str) -> np.ndarray | None:
     model = loaded.model
 
     try:
-        input_tensor = preprocess_image_file(source_path)
+        input_tensor = preprocess_image_file(source_path, image_size=loaded.image_size)
         heatmap = make_gradcam_heatmap(input_tensor, model, DEFAULT_GRADCAM_LAYER)
         if heatmap is None:
             # Grad-CAM returned None, saliency will be used as fallback
